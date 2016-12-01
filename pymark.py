@@ -10,23 +10,19 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import os,json
+import json
+import os
 from sqlite3 import dbapi2 as sqlite3
-from flask import Flask, request, session, g, redirect, url_for, abort, \
-     render_template, flash
 
-from werkzeug import secure_filename
-
-
+import markdown2
 from flask import Flask
 from flask import render_template
-from flask import Markup
-import markdown2
+from flask import request, session, g, redirect, url_for, abort, \
+    flash
 from flask import send_from_directory
-
+from werkzeug import secure_filename
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
-
 
 # create our little application :)
 app = Flask(__name__)
@@ -35,11 +31,11 @@ app = Flask(__name__)
 app.config.update(dict(
     DATABASE=os.path.join(app.root_path, 'pymark.db'),
     DEBUG=True,
-    UPLOAD_FOLDER = os.path.join(app.root_path, 'uploads'),
+    UPLOAD_FOLDER=os.path.join(app.root_path, 'uploads'),
     SECRET_KEY='development key',
-    BLOGNAME = "PyMark BLog",
+    BLOGNAME="ZhengZy Blog",
     USERNAME='admin',
-    PASSWORD='admin'
+    PASSWORD='666666'
 ))
 app.config.from_envvar('PYMARK_SETTINGS', silent=True)
 
@@ -94,102 +90,108 @@ def close_db(error):
 
 @app.route('/markdown', methods=['POST'])
 def post_markdown():
-    #request.form['title']
-    #request.form['content']
-    #print request.form['content']
-    #content = Markup(markdown.markdown(request.form['content']))
-    content = markdown2.markdown( "#"+ request.form['title']+ "\n" +request.form['content'], extras=["code-friendly","code-color", "cuddled-lists","tables","footnotes","pyshell","toc"])
+    # request.form['title']
+    # request.form['content']
+    # print request.form['content']
+    # content = Markup(markdown.markdown(request.form['content']))
+    content = markdown2.markdown("#" + request.form['title'] + "\n" + request.form['content'],
+                                 extras=["code-friendly", "code-color", "cuddled-lists", "tables", "footnotes",
+                                         "pyshell", "toc"])
 
     return content
 
 
-#===============================================================================
+# ===============================================================================
 # User Mode
-#===============================================================================
+# ===============================================================================
 
 @app.context_processor
 def inject_nav():
     db = get_db()
-    cur = db.execute('select id, title, navigation from blog where navigation=1 order by id')
+    cur = db.execute('SELECT id, title, navigation FROM blog WHERE navigation=1 ORDER BY id')
     rows = cur.fetchall()
-    
+
     result = []
     for row in rows:
-        result.append((row["id"],row["title"]))
-    return {'navs': result, 'blogname':app.config['BLOGNAME']}
+        result.append((row["id"], row["title"]))
+    return {'navs': result, 'blogname': app.config['BLOGNAME']}
 
 
 @app.route('/')
 def index():
     db = get_db()
-    cur = db.execute('select id, title, content from blog where navigation=0 order by id desc LIMIT 5')
+    cur = db.execute('SELECT id, title, content FROM blog WHERE navigation=0 ORDER BY id DESC LIMIT 5')
     rows = cur.fetchall()
-    #content = Markup(markdown.markdown(entries))
-    #print entries
+    # content = Markup(markdown.markdown(entries))
+    # print entries
     result = []
     for row in rows:
-        content = markdown2.markdown(row["content"], extras=["code-friendly","code-color", "cuddled-lists","tables","footnotes","pyshell","toc"])
-        #content = Markup(markdown.markdown(row["content"]))
+        content = markdown2.markdown(row["content"],
+                                     extras=["code-friendly", "code-color", "cuddled-lists", "tables", "footnotes",
+                                             "pyshell", "toc"])
+        # content = Markup(markdown.markdown(row["content"]))
         result.append((row["id"], row["title"], content))
-  
+
     return render_template('index.html', result=result)
-    
- 
+
 
 @app.route('/blog/')
 @app.route('/blog/<id>')
 def show_post(id=None):
     if id:
         db = get_db()
-        cur = db.execute('select id, title, content from blog where id = ?', [id])
+        cur = db.execute('SELECT id, title, content FROM blog WHERE id = ?', [id])
         row = cur.fetchone()
         if row:
             result = []
-            content = markdown2.markdown(row["content"], extras=["code-friendly","code-color", "cuddled-lists","tables","footnotes","pyshell","toc"])
-            #content = Markup(markdown.markdown(row["content"]))
-            result.append((row["id"], row["title"],content))
+            content = markdown2.markdown(row["content"],
+                                         extras=["code-friendly", "code-color", "cuddled-lists", "tables", "footnotes",
+                                                 "pyshell", "toc"])
+            # content = Markup(markdown.markdown(row["content"]))
+            result.append((row["id"], row["title"], content))
             return render_template('blog.html', result=result)
-            #return render_template('show_blog.html', **locals())
+            # return render_template('show_blog.html', **locals())
         else:
             abort(404)
     else:
         db = get_db()
-        cur = db.execute('select id, title, content from blog where navigation=0 order by id desc')
+        cur = db.execute('SELECT id, title, content FROM blog WHERE navigation=0 ORDER BY id DESC')
         rows = cur.fetchall()
-        #content = Markup(markdown.markdown(entries))
-        #print entries
+        # content = Markup(markdown.markdown(entries))
+        # print entries
         result = []
         for row in rows:
-            content = markdown2.markdown(row["content"], extras=["code-friendly","code-color", "cuddled-lists","tables","footnotes","pyshell","toc"])
+            content = markdown2.markdown(row["content"],
+                                         extras=["code-friendly", "code-color", "cuddled-lists", "tables", "footnotes",
+                                                 "pyshell", "toc"])
 
             result.append((row["id"], row["title"], content))
-        
+
         return render_template('blog.html', result=result)
-        #return render_template('show_blog.html', **locals())
+        # return render_template('show_blog.html', **locals())
 
 
-
-#===============================================================================
+# ===============================================================================
 # Admin Mode
-#===============================================================================
+# ===============================================================================
 
 
 @app.route('/admin/')
 def admin_post():
     if not session.get('logged_in'):
-        #abort(401)
+        # abort(401)
         return redirect(url_for('login'))
     db = get_db()
-    cur = db.execute('select id, title, navigation from blog order by id desc')
+    cur = db.execute('SELECT id, title, navigation FROM blog ORDER BY id DESC')
     rows = cur.fetchall()
-    #content = Markup(markdown.markdown(entries))
-    #print entries
+    # content = Markup(markdown.markdown(entries))
+    # print entries
     result = []
     for row in rows:
-        result.append((row["title"],row["id"],row["navigation"]))
+        result.append((row["title"], row["id"], row["navigation"]))
 
     return render_template('admin.html', result=result)
-    #return render_template('show_blog.html', **locals())
+    # return render_template('show_blog.html', **locals())
 
 
 @app.route('/admin/edit/')
@@ -197,7 +199,8 @@ def new_post():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     return render_template('editor_new.html')
-    #return render_template('show_blog.html', **locals())
+    # return render_template('show_blog.html', **locals())
+
 
 @app.route('/admin/edit/<id>', methods=['GET'])
 def edit_post(id=None):
@@ -205,11 +208,11 @@ def edit_post(id=None):
         return redirect(url_for('login'))
     if id:
         db = get_db()
-        cur = db.execute('select id, title, content, navigation from blog where id = ?', [id])
+        cur = db.execute('SELECT id, title, content, navigation FROM blog WHERE id = ?', [id])
         row = cur.fetchone()
         if row:
-            #content = Markup(markdown.markdown(entries))
-            #print entries
+            # content = Markup(markdown.markdown(entries))
+            # print entries
             result = []
             result.append(row["id"])
             result.append(row["title"])
@@ -221,37 +224,38 @@ def edit_post(id=None):
     abort(404)
 
 
-
-       
 @app.route('/admin/update', methods=['POST'])
 def update_post():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     db = get_db()
-    #print request.form['type']
-    #print request.form['title']
-    #print request.form['content']
+    # print request.form['type']
+    # print request.form['title']
+    # print request.form['content']
     if request.form['type'] == 'new':
-        if 'navigation' in request.form: 
+        if 'navigation' in request.form:
             if request.form['navigation'] == "yes":
-                db.execute("INSERT into blog (title, navigation, content, post_time) values (?, 1, ?, datetime('now'))", [request.form['title'], request.form['content']])
+                db.execute("INSERT INTO blog (title, navigation, content, post_time) VALUES (?, 1, ?, datetime('now'))",
+                           [request.form['title'], request.form['content']])
                 db.commit()
         else:
-            db.execute("INSERT into blog (title, navigation, content, post_time) values (?, 0, ?, datetime('now'))", [request.form['title'], request.form['content']])
+            db.execute("INSERT INTO blog (title, navigation, content, post_time) VALUES (?, 0, ?, datetime('now'))",
+                       [request.form['title'], request.form['content']])
             db.commit()
-    
+
     elif request.form['type'] == 'update':
-        db.execute('UPDATE blog set title=?, content=? where id= ?', [request.form['title'], request.form['content'], request.form['id']])
+        db.execute('UPDATE blog SET title=?, content=? WHERE id= ?',
+                   [request.form['title'], request.form['content'], request.form['id']])
         db.commit()
 
-        if 'navigation' in request.form: 
+        if 'navigation' in request.form:
             if request.form['navigation'] == "yes":
-                db.execute('UPDATE blog set navigation=1 where id=?', [request.form['id']])
+                db.execute('UPDATE blog SET navigation=1 WHERE id=?', [request.form['id']])
                 db.commit()
         else:
-            db.execute('UPDATE blog set navigation=0 where id=?', [request.form['id']])
+            db.execute('UPDATE blog SET navigation=0 WHERE id=?', [request.form['id']])
             db.commit()
-              
+
     flash('New blog was successfully updated')
     return redirect(url_for('admin_post'))
 
@@ -261,44 +265,44 @@ def delete_post(id=None):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     db = get_db()
-    db.execute('DELETE from blog where id = ?',[id])
+    db.execute('DELETE FROM blog WHERE id = ?', [id])
     db.commit()
     flash('blog was successfully deleted')
     return redirect(url_for('admin_post'))
 
 
-@app.route('/admin/upload_progress',methods=['POST'])
+@app.route('/admin/upload_progress', methods=['POST'])
 def upload_progress():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     return json.dumps('')
-    
 
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-@app.route('/admin/upload',methods=['GET', 'POST'])
+
+@app.route('/admin/upload', methods=['GET', 'POST'])
 def upload_file():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    
+
     if request.method == 'POST':
         file = request.files['file']
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return json.dumps({"name": "/uploads/"+filename})
+            return json.dumps({"name": "/uploads/" + filename})
 
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)    
-            
-            
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -321,3 +325,7 @@ def logout():
     session.pop('logged_in', None)
     flash('You were logged out')
     return redirect(url_for('index'))
+
+
+if __name__ == "__main__":
+    app.run('127.0.0.1', 6666)
